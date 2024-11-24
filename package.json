@@ -2,10 +2,9 @@
   "name": "mdpub",
   "version": "0.0.0",
   "description": "Tool for authoring documents in markdown with live preview and publishing to pdf or html/css.",
-  "main": "index.js",
-  "scripts": {
-    "test": "echo \"Error: no test specified\" && exit 1"
-  },
+  "homepage": "https://github.com/andrew-chang-dewitt/mdpub#readme",
+  "author": "Andrew Chang-DeWitt",
+  "license": "MIT",
   "keywords": [
     "markdown",
     "md",
@@ -15,6 +14,48 @@
     "hmr",
     "preview"
   ],
-  "author": "Andrew Chang-DeWitt",
-  "license": "MIT"
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/andrew-chang-dewitt/mdpub"
+  },
+  "bugs": {
+    "url": "https://github.com/andrew-chang-dewitt/mdpub/issues"
+  },
+  "type": "module",
+  "bin": "./index.js",
+  "scripts": {
+    "clean": "rm -rf dist && mkdir dist",
+    "test": "echo 'TESTS NOT IMPLEMENTED YET'",
+    "prebuild": "npm run test",
+    "build": "tsc",
+    "dev": "index.js README.md",
+    "prerelease": "npm run clean && npm run build",
+    "release": "commit-and-tag-version",
+    "prepare": "husky",
+    "prepack": "npm run clean && npm run build",
+    "prepublishOnly": "npm run clean && npm run build"
+  },
+  "prettier": {
+    "semi": false
+  },
+  "commitlint": {
+    "extends": [
+      "@commitlint/config-conventional"
+    ]
+  },
+  "dependencies": {
+    "create-vite-ssg": "^0.0.1",
+    "minimist": "^1.2.8"
+  },
+  "devDependencies": {
+    "@commitlint/cli": "^19.6.0",
+    "@commitlint/config-conventional": "^19.6.0",
+    "@types/node": "^22.9.1",
+    "commit-and-tag-version": "^12.5.0",
+    "husky": "^9.1.7",
+    "loglevel": "^1.9.2",
+    "prettier": "^3.3.3",
+    "tsc-watch": "^6.2.1",
+    "typescript": "^5.6.3"
+  }
 }
