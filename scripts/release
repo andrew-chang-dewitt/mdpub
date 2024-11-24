@@ -1,0 +1,96 @@
+#!/usr/bin/env bash
+
+# init tag as empty until a release is created
+tag=""
+
+#
+# exit_failure
+#
+# quit with a failure exit code
+exit_failure () {
+    echo "quitting release"
+    exit 1
+}
+
+#
+# cleanup
+#
+# goes back to main & deletes the no longer necessary staging branch
+cleanup () {
+    git checkout main
+    git branch -D bot/release-staging
+}
+
+#
+# failure_cleanup
+#
+# does all normal cleanup steps, but also deletes the tag for the failed release
+failure_cleanup () {
+    cleanup
+    if [ -n "$tag" ]; then
+        git tag -d $tag
+    fi
+}
+
+#
+# exit_cleanup
+#
+# helper fn to attempt graceful exit on program failure
+exit_cleanup () {
+    echo "attempting to quit gracefully..."
+    if ! failure_cleanup; then
+        echo "graceful quit failed, bailing"
+    else
+        echo "graceful shutdown complete"
+    fi
+    exit_failure
+}
+
+#
+# try <command> [on_failure]
+#
+# helper fn to try a failiable action & optionally execute a command on fail
+#
+# command:    a command to try executing
+# on_failure: optional command to run on failure;
+#             if not given, program will attempt to exit gracefully
+try () {
+    local catch=${2:-"exit_cleanup"} # use 2nd arg on error, or default to exit helper
+    if ! $1; then
+        echo "'$1' failed"
+        $catch
+    fi
+}
+
+#
+# create
+#
+# try to create a release & prepare the release changelog
+create () {
+    git checkout -b bot/release-staging
+    try "npm run release"
+    # update global tag value from newly updated package.json
+    tag="v$(node -p "require('./package.json').version")"
+    try "node scripts/getChanges.js"
+}
+
+#
+# push
+#
+# merge to main & push release tag
+push () {
+    try "git checkout main"
+    try "git merge bot/release-staging"
+    try "git push --follow-tags origin main"
+}
+
+create
+
+if [ -s BODY.md ]; then
+    echo "user facing changes found, pushing tag for release"
+    push
+else
+    echo "no user facing changes found, deleting tag"
+fi
+
+cleanup
