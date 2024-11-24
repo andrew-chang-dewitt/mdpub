@@ -23,12 +23,21 @@
   },
   "type": "module",
   "bin": "./index.js",
+  "files": [
+    "./index.js",
+    "dist"
+  ],
+  "bundledDependencies": [
+    "create-vite-ssg"
+  ],
   "scripts": {
     "clean": "rm -rf dist && mkdir dist",
     "test": "echo 'TESTS NOT IMPLEMENTED YET'",
     "prebuild": "npm run test",
     "build": "tsc",
-    "dev": "index.js README.md",
+    "predev": "npm run build",
+    "dev": "node index.js -v README.md",
+    "watch": "tsc-watch --onSuccess 'npm run dev'",
     "prerelease": "npm run clean && npm run build",
     "release": "commit-and-tag-version",
     "prepare": "husky",
