@@ -1,0 +1,35 @@
+name: Release on tag
+
+on:
+  push:
+    tags:
+      - v*
+
+jobs:
+  release:
+
+    runs-on: ubuntu-latest
+
+    steps:
+    - uses: actions/checkout@v4
+    - uses: actions/setup-node@v4
+      with:
+        node-version: 22.x
+        cache: 'npm'
+    - name: install dependencies
+      run: npm ci
+    - name: build artifacts
+      run: |
+        npm run build
+        npm pack
+    - name: get release body
+      id: get-release-body
+      run: |
+        node scripts/getChanges.js
+        echo "BODY for GH release:"
+        cat BODY.md
+    - uses: ncipollo/release-action@v1
+      with:
+        artifacts: "vite-plugin-static-md-*.tgz,dist/*"
+        token: ${{secrets.RELEASE_PAT}}
+        bodyFile: "BODY.md"
