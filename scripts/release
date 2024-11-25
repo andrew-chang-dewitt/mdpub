@@ -1,5 +1,11 @@
 #!/usr/bin/env bash
 
+# check if dry run
+dry=false
+if [ "$1" = "--dry-run" ]; then
+    dry=true
+fi
+
 # init tag as empty until a release is created
 tag=""
 
@@ -88,7 +94,9 @@ create
 
 if [ -s BODY.md ]; then
     echo "user facing changes found, pushing tag for release"
-    push
+    if [ "$dry" = false ]; then
+        push
+    fi
 else
     echo "no user facing changes found, deleting tag"
 fi
