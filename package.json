@@ -1,6 +1,6 @@
 {
   "name": "mdpub",
-  "version": "0.0.0",
+  "version": "0.0.1",
   "description": "Tool for authoring documents in markdown with live preview and publishing to pdf or html/css.",
   "homepage": "https://github.com/andrew-chang-dewitt/mdpub#readme",
   "author": "Andrew Chang-DeWitt",
