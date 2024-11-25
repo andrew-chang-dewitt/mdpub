@@ -2,6 +2,13 @@
 
 All notable changes to this project will be documented in this file. See [commit-and-tag-version](https://github.com/absolute-version/commit-and-tag-version) for commit guidelines.
 
+## [0.0.2](https://github.com/andrew-chang-dewitt/mdpub/compare/v0.0.1...v0.0.2) (2024-11-25)
+
+
+### Bug Fixes
+
+* correct name for ci/cd release artifacts ([02aeefa](https://github.com/andrew-chang-dewitt/mdpub/commit/02aeefada6e1a269a9bc532dbbf7c719f7e22e85))
+
 ## [0.0.1](https://github.com/andrew-chang-dewitt/mdpub/compare/v0.0.0...v0.0.1) (2024-11-25)
 
 
