@@ -30,6 +30,6 @@ jobs:
         cat BODY.md
     - uses: ncipollo/release-action@v1
       with:
-        artifacts: "vite-plugin-static-md-*.tgz,dist/*"
+        artifacts: "mdpub-*.tgz"
         token: ${{secrets.RELEASE_PAT}}
         bodyFile: "BODY.md"
