@@ -53,7 +53,9 @@
     ]
   },
   "dependencies": {
+    "chokidar": "^4.0.1",
     "create-vite-ssg": "^0.0.1",
+    "loglevel": "^1.9.2",
     "minimist": "^1.2.8"
   },
   "devDependencies": {
@@ -62,9 +64,11 @@
     "@types/node": "^22.9.1",
     "commit-and-tag-version": "^12.5.0",
     "husky": "^9.1.7",
-    "loglevel": "^1.9.2",
     "prettier": "^3.3.3",
     "tsc-watch": "^6.2.1",
     "typescript": "^5.6.3"
-  }
+  },
+  "bundleDependencies": [
+    "create-vite-ssg"
+  ]
 }

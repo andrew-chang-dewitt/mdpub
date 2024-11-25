@@ -4,8 +4,8 @@
     "incremental": true,
 
     /* Language and Environment */
-    "target": "es2020",
-    "lib": ["ES2020"],
+    "target": "es2022",
+    "lib": ["ES2022"],
     "useDefineForClassFields": true,
     // "moduleDetection": "auto", // vite's template-vanilla-ts uses "force"
 

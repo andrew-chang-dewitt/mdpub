@@ -13,11 +13,18 @@
 
 // import { parse } from "path"
 
+import { ChildProcess, spawn, spawnSync } from "child_process"
+import { cp, glob, mkdir, mkdtemp, rm } from "fs/promises"
+import { tmpdir } from "os"
+import { join } from "path"
+
+import { FSWatcher, watch } from "chokidar"
 import logger from "loglevel"
+
 import { parseArgs } from "./arg-dedupe.js"
 import { dir } from "./utils.js"
 
-// const __dirname = import.meta.dirname
+const __dirname = import.meta.dirname
 // const CWD = process.cwd()
 
 const HELP_MESSAGE = `\
@@ -37,12 +44,11 @@ const levelsArray = [TRACE, DEBUG, INFO, WARN, ERROR]
 
 interface Args {
   help: boolean
-  overwrite: boolean
   verbose: number
   _: string[]
 }
 
-export function main(argv: string[]) {
+export async function main(argv: string[]): Promise<void> {
   // parse args
   const args = parseArgs<Args>(argv, ["v", "verbose"], {
     default: { help: false, overwrite: false, verbose: 2 },
@@ -65,12 +71,118 @@ export function main(argv: string[]) {
   logger.debug("init() called with args:")
   logger.debug(dir(args))
 
+  // get path
+  const path = args._[0]
+
   // if help option, display message & exit immediately
-  if (args.help) {
+  // also, if no PATH, show help
+  if (args.help || path === undefined) {
     // skip logger so this always prints
     process.stdout.write(HELP_MESSAGE)
     return
   }
+
+  return livePreview(path)
 }
 
-// function livePreview() {}
+async function livePreview(path: string): Promise<void> {
+  logger.debug("Starting live preview...")
+
+  let appDir: TmpDir | undefined = undefined
+  let watcher: FSWatcher | undefined = undefined
+  let server: ChildProcess | undefined = undefined
+
+  async function cleanup(): Promise<void> {
+    if (appDir) await appDir.destroy()
+    if (watcher && !watcher.closed) await watcher.close()
+    if (server && server.connected) server.disconnect()
+    logger.debug("Preview cleanup complete")
+  }
+
+  async function serverExit(child: ChildProcess): Promise<void> {
+    return new Promise((resolve, reject) => {
+      child.on("error", (err) => {
+        reject(
+          new Error("Error raised in preview server process.", {
+            cause: err,
+          }),
+        )
+      })
+      child.once("exit", (code) => {
+        logger.info("server exiting...")
+        cleanup()
+        if (code === 0) {
+          resolve()
+        } else {
+          reject(new Error(`Unhandled exit code in server: ${code}`))
+        }
+      })
+    })
+  }
+
+  try {
+    // make tempdir
+    appDir = await getTempDir()
+    const templateDir = `${__dirname}/../node_modules/create-vite-ssg/template-typescript`
+
+    // copy template to tmpdir & clear out example in src/pages/
+    await cp(templateDir, appDir.path, { recursive: true })
+    logger.debug("app template loaded")
+    if (logger.getLevel() === logger.levels.TRACE) {
+      for await (const f of glob(`${appDir.path}/**/*`)) {
+        logger.trace(`    <TEMPDIR>${f.slice(appDir.path.length)}`)
+      }
+    }
+
+    // install deps in appDir
+    const install = spawnSync("npm", ["i"], { cwd: appDir.path })
+    logger.debug("install results")
+    logger.debug(install.output.toString())
+
+    // replace pages at template w/ page given by path
+    const srcPagesPath = join(appDir.path, "src/pages")
+    await rm(srcPagesPath, { recursive: true, force: true })
+    await mkdir(srcPagesPath)
+    // const filename = parse(path).base
+    await cp(path, join(srcPagesPath, "index.md"))
+    logger.debug(`${path} copied into temporary app`)
+
+    // make chokidar watcher that copies file at `path` to
+    watcher = watch(path)
+    watcher.on("change", async (f) => {
+      await cp(path, join(srcPagesPath, "index.md"))
+      logger.debug(`${f} updated in preview server`)
+    })
+    logger.info(`Watching ${path} for changes`)
+
+    // start vite dev server in temp dir
+    server = spawn("npm", ["run", "dev"], {
+      cwd: appDir.path,
+      stdio: [process.stdin, process.stdout, process.stderr],
+    })
+
+    return await serverExit(server)
+  } catch (err) {
+    logger.error(
+      "Unhandled error caught in LivePreview, propagating upwards...",
+    )
+    cleanup()
+    throw new Error("Unhandled error in livePreview:", { cause: err })
+  }
+}
+
+interface TmpDir {
+  path: string
+  destroy: () => Promise<void>
+}
+
+async function getTempDir(): Promise<TmpDir> {
+  const prefix = "mdpub-"
+  const tempPath = join(tmpdir(), prefix)
+  const path = await mkdtemp(tempPath)
+  logger.debug(`...temp dir created: ${path}`)
+
+  const destroy = async () => await rm(path, { recursive: true, force: true })
+
+  return { path, destroy }
+}
