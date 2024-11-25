@@ -14,15 +14,16 @@
 // import { parse } from "path"
 
 import { ChildProcess, spawn, spawnSync } from "child_process"
-import { cp, glob, mkdir, mkdtemp, rm } from "fs/promises"
+import { cp, glob, mkdtemp, rm, stat } from "fs/promises"
 import { tmpdir } from "os"
-import { join } from "path"
+import { join, parse } from "path"
 
 import { FSWatcher, watch } from "chokidar"
 import logger from "loglevel"
 
 import { parseArgs } from "./arg-dedupe.js"
 import { dir } from "./utils.js"
+import { rmSync } from "fs"
 
 const __dirname = import.meta.dirname
 // const CWD = process.cwd()
@@ -93,10 +94,18 @@ async function livePreview(path: string): Promise<void> {
   let server: ChildProcess | undefined = undefined
 
   async function cleanup(): Promise<void> {
+    logger.debug("Cleaning up...")
     if (appDir) await appDir.destroy()
     if (watcher && !watcher.closed) await watcher.close()
-    if (server && server.connected) server.disconnect()
-    logger.debug("Preview cleanup complete")
+    if (server && !server.killed) server.kill("SIGTERM")
+    logger.debug("...cleanup complete")
+  }
+
+  function cleanupSync(): void {
+    logger.debug("Cleaning up...")
+    if (appDir) appDir.destroySync()
+    if (server && !server.killed) server.kill("SIGTERM")
+    logger.debug("...cleanup complete")
   }
 
   async function serverExit(child: ChildProcess): Promise<void> {
@@ -120,6 +129,17 @@ async function livePreview(path: string): Promise<void> {
     })
   }
 
+  // ensure everything's cleaned up parent exit
+  process.on("beforeExit", (_) => {
+    logger.info("Shutting down...")
+    cleanupSync()
+  })
+  // same for CTRL+C
+  process.on("SIGINT", (_) => {
+    logger.info("CTRL+C caught, shutting down...")
+    cleanupSync()
+  })
+
   try {
     // make tempdir
     appDir = await getTempDir()
@@ -135,22 +155,24 @@ async function livePreview(path: string): Promise<void> {
     }
 
     // install deps in appDir
+    logger.debug("setup preview server environment")
     const install = spawnSync("npm", ["i"], { cwd: appDir.path })
     logger.debug("install results")
     logger.debug(install.output.toString())
 
     // replace pages at template w/ page given by path
+    logger.debug(`setting up preview server w/ content at ${path}`)
     const srcPagesPath = join(appDir.path, "src/pages")
     await rm(srcPagesPath, { recursive: true, force: true })
-    await mkdir(srcPagesPath)
-    // const filename = parse(path).base
-    await cp(path, join(srcPagesPath, "index.md"))
+    const isDir = await stat(path).then((s) => s.isDirectory())
+    const srcPath = isDir ? path : parse(path).dir
+    await cp(srcPath, join(srcPagesPath), { recursive: true })
     logger.debug(`${path} copied into temporary app`)
 
     // make chokidar watcher that copies file at `path` to
-    watcher = watch(path)
+    watcher = watch(srcPath)
     watcher.on("change", async (f) => {
-      await cp(path, join(srcPagesPath, "index.md"))
+      await cp(join(srcPath, f), join(srcPagesPath, f))
       logger.debug(`${f} updated in preview server`)
     })
     logger.info(`Watching ${path} for changes`)
@@ -174,6 +196,7 @@ async function livePreview(path: string): Promise<void> {
 interface TmpDir {
   path: string
   destroy: () => Promise<void>
+  destroySync: () => void
 }
 
 async function getTempDir(): Promise<TmpDir> {
@@ -183,6 +206,7 @@ async function getTempDir(): Promise<TmpDir> {
   logger.debug(`...temp dir created: ${path}`)
 
   const destroy = async () => await rm(path, { recursive: true, force: true })
+  const destroySync = () => rmSync(path, { recursive: true, force: true })
 
-  return { path, destroy }
+  return { path, destroy, destroySync }
 }

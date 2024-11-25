@@ -27,7 +27,7 @@
     "./index.js",
     "dist"
   ],
-  "bundledDependencies": [
+  "bundleDependencies": [
     "create-vite-ssg"
   ],
   "scripts": {
@@ -36,8 +36,8 @@
     "prebuild": "npm run test",
     "build": "tsc",
     "predev": "npm run build",
-    "dev": "node index.js -v README.md",
-    "watch": "tsc-watch --onSuccess 'npm run dev'",
+    "dev": "node index.js -v example",
+    "watch": "tsc-watch --onSuccess 'node index.js -v example'",
     "prerelease": "npm run clean && npm run build",
     "release": "commit-and-tag-version",
     "prepare": "husky",
@@ -67,8 +67,5 @@
     "prettier": "^3.3.3",
     "tsc-watch": "^6.2.1",
     "typescript": "^5.6.3"
-  },
-  "bundleDependencies": [
-    "create-vite-ssg"
-  ]
+  }
 }
