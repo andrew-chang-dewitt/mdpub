@@ -14,19 +14,19 @@
 // import { parse } from "path"
 
 import { ChildProcess, spawn, spawnSync } from "child_process"
+import { rmSync } from "fs"
 import { cp, glob, mkdtemp, rm, stat } from "fs/promises"
 import { tmpdir } from "os"
-import { join, parse } from "path"
+import { join, parse, resolve } from "path"
 
 import { FSWatcher, watch } from "chokidar"
 import logger from "loglevel"
 
 import { parseArgs } from "./arg-dedupe.js"
 import { dir } from "./utils.js"
-import { rmSync } from "fs"
 
 const __dirname = import.meta.dirname
-// const CWD = process.cwd()
+const CWD = process.cwd()
 
 const HELP_MESSAGE = `\
 Usage: mdpub [PATH]
@@ -146,6 +146,8 @@ async function livePreview(path: string): Promise<void> {
     const templateDir = `${__dirname}/../node_modules/create-vite-ssg/template-typescript`
 
     // copy template to tmpdir & clear out example in src/pages/
+    logger.debug(`Loading template from ${templateDir} to ${appDir.path}`)
+    logger.debug(dir(appDir))
     await cp(templateDir, appDir.path, { recursive: true })
     logger.debug("app template loaded")
     if (logger.getLevel() === logger.levels.TRACE) {
@@ -161,11 +163,12 @@ async function livePreview(path: string): Promise<void> {
     logger.debug(install.output.toString())
 
     // replace pages at template w/ page given by path
-    logger.debug(`setting up preview server w/ content at ${path}`)
     const srcPagesPath = join(appDir.path, "src/pages")
     await rm(srcPagesPath, { recursive: true, force: true })
     const isDir = await stat(path).then((s) => s.isDirectory())
-    const srcPath = isDir ? path : parse(path).dir
+    const resolvedSrc = resolve(CWD, path)
+    const srcPath = isDir ? resolvedSrc : parse(resolvedSrc).dir
+    logger.debug(`setting up preview server w/ content from ${srcPath}`)
     await cp(srcPath, join(srcPagesPath), { recursive: true })
     logger.debug(`${path} copied into temporary app`)
 
