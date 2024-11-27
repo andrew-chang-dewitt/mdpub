@@ -215,9 +215,7 @@ Release $tag staged on $branch. To complete release, inspect staged release as n
         exit 0
     else
         printf "pushing tag for release\n"
-        # FIXME: change back to push and remove failure_cleanup
-        # push
-        failure_cleanup
+        push
     fi
 else
     printf "no user facing changes found, deleting tag\n"
