@@ -1,20 +1,112 @@
 #!/usr/bin/env bash
 
-# check if dry run
-dry=false
-if [ "$1" = "--dry-run" ]; then
-    dry=true
+# improved safety
+set -o errexit -o pipefail -o noclobber -o nounset
+
+#
+# handle options:
+#
+
+# ensure getopt support is present
+getopt --test > /dev/null && true
+if [[ $? -ne 4 ]]; then
+    printf '`getopt --test` failed, it might not be available in this environment'
+    exit 1
 fi
+
+# store original_cmd
+original_cmd="$0 $@"
+# set option defaults
+dry=false
+stage=false
+
+# parse opts
+help_msg="\
+Usage: release [OPTIONS]
+
+OPTIONS:
+  -d, --dry-run                execute as dry run, meaning all output will be
+                               given, but release branch will deleted instead
+                               merged & then main pushed to remote
+  -f, --first-release          do not bump version number, but create tag
+                               matching it & commit instead
+  -p, --prerelease [PREFIX]    cut release as prerelease, optionally using the
+                               given prerelease prefix
+  -r, --release-as <TYPE>      specify type of release as 'major', 'minor', or
+                               w/ exact version number given as format matching
+  -s, --stage-only [BRANCH]    create release on staging branch, but do not
+                               merge to main & push for release
+"
+longopts=dry-run,release-as:,prerelease::,help,stage-only
+options=dr:ph?s
+release_args=()
+parsed=$(getopt --options=$options --longoptions=$longopts --name "$0" -- "$@")
+eval set -- "$parsed"
+while true; do
+    case "$1" in
+        -d|--dry-run)
+            dry=true
+            shift
+            ;;
+        -f|--first-release)
+            release_args+=("$1")
+            shift
+            ;;
+        -h|--help|\?)
+            printf "$help_msg"
+            exit 0
+            ;;
+        --prerelease)
+            release_args+=("$1")
+            if [ ${#@} -gt 1 ]; then
+                release_args+=("$2")
+                shift 2
+            else
+                shift
+            fi
+            ;;
+        -p)
+            release_args+=("--prerelease")
+            shift
+            ;;
+        -r|--release-as)
+            release_args+=("$1")
+            release_args+=("$2")
+            shift 2
+            ;;
+        -s|--stage-only)
+            stage=true
+            shift
+            ;;
+        --)
+            shift
+            break
+            ;;
+        *)
+            printf "Options error"
+            printf "$help_msg"
+            exit 3
+            ;;
+    esac
+done
+
+printf "\
+releasing with options as:
+  --dry-run: $dry
+  --stage-only: $stage
+  -- ${release_args[@]}"
 
 # init tag as empty until a release is created
 tag=""
+# define branch used for staging releases
+branch="chore/release-staging"
 
 #
 # exit_failure
 #
 # quit with a failure exit code
 exit_failure () {
-    echo "quitting release"
+    printf "quitting release"
     exit 1
 }
 
@@ -24,7 +116,7 @@ exit_failure () {
 # goes back to main & deletes the no longer necessary staging branch
 cleanup () {
     git checkout main
-    git branch -D bot/release-staging
+    git branch -D $branch
 }
 
 #
@@ -43,11 +135,11 @@ failure_cleanup () {
 #
 # helper fn to attempt graceful exit on program failure
 exit_cleanup () {
-    echo "attempting to quit gracefully..."
+    printf "attempting to quit gracefully..."
     if ! failure_cleanup; then
-        echo "graceful quit failed, bailing"
+        printf "graceful quit failed, bailing"
     else
-        echo "graceful shutdown complete"
+        printf "graceful shutdown complete"
     fi
     exit_failure
 }
@@ -63,7 +155,7 @@ exit_cleanup () {
 try () {
     local catch=${2:-"exit_cleanup"} # use 2nd arg on error, or default to exit helper
     if ! $1; then
-        echo "'$1' failed"
+        printf "'$1' failed"
         $catch
     fi
 }
@@ -73,8 +165,12 @@ try () {
 #
 # try to create a release & prepare the release changelog
 create () {
-    git checkout -b bot/release-staging
-    try "npm run release"
+    git checkout -b $branch
+    cmd="npm run release"
+    if [ ${#release_args[@]} -gt 0 ]; then
+        cmd+=" -- ${release_args[@]}"
+    fi
+    try "$cmd"
     # update global tag value from newly updated package.json
     tag="v$(node -p "require('./package.json').version")"
     try "node scripts/getChanges.js"
@@ -86,19 +182,39 @@ create () {
 # merge to main & push release tag
 push () {
     try "git checkout main"
-    try "git merge bot/release-staging"
+    try "git merge $branch"
     try "git push --follow-tags origin main"
 }
 
 create
 
 if [ -s BODY.md ]; then
-    echo "user facing changes found, pushing tag for release"
-    if [ "$dry" = false ]; then
-        push
+    printf "user facing changes found:\n"
+    cat BODY.md
+    printf "\n\n"
+
+    if [ "$dry" == "true" ]; then
+        failure_cleanup
+        printf "dry run complete, rerun '$original_cmd' without --dry-run to execute"
+        exit 0
+    elif [ "$stage" == "true" ]; then
+        printf "\
+Release $tag staged on $branch. To complete release, inspect staged release as needed, then do:
+    git checkout main
+    git merge $branch
+    git push origin
+    git branch -d $branch
+    rm BODY.md"
+        exit 0
+    else
+        printf "pushing tag for release"
+        # FIXME: change back to push and remove failure_cleanup
+        # push
+        failure_cleanup
     fi
 else
-    echo "no user facing changes found, deleting tag"
+    printf "no user facing changes found, deleting tag"
+    failure_cleanup
 fi
 
 cleanup
