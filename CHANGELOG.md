@@ -2,6 +2,14 @@
 
 All notable changes to this project will be documented in this file. See [commit-and-tag-version](https://github.com/absolute-version/commit-and-tag-version) for commit guidelines.
 
+## [0.1.0](https://github.com/andrew-chang-dewitt/mdpub/compare/v0.0.2...v0.1.0) (2024-11-27)
+
+
+### Bug Fixes
+
+* correctly handle SIGINT propagation to vite dev server ([4ec31ff](https://github.com/andrew-chang-dewitt/mdpub/commit/4ec31fffe6f62cd400bb2661196581f5abbf2d39))
+* resolve full path of given source path ([ebff522](https://github.com/andrew-chang-dewitt/mdpub/commit/ebff5224cad48262ea625c23496108f8054e04ab))
+
 ## [0.0.2](https://github.com/andrew-chang-dewitt/mdpub/compare/v0.0.1...v0.0.2) (2024-11-25)
 
 
