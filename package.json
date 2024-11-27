@@ -39,7 +39,7 @@
     "dev": "node index.js -v example",
     "watch": "tsc-watch --onSuccess 'node index.js -v example'",
     "prerelease": "npm run clean && npm run build",
-    "release": "commit-and-tag-version",
+    "release": "scripts/release",
     "prepare": "husky",
     "prepack": "npm run clean && npm run build",
     "prepublishOnly": "npm run clean && npm run build"

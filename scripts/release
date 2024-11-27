@@ -10,7 +10,7 @@ set -o errexit -o pipefail -o noclobber -o nounset
 # ensure getopt support is present
 getopt --test > /dev/null && true
 if [[ $? -ne 4 ]]; then
-    printf '`getopt --test` failed, it might not be available in this environment'
+    printf '`getopt --test` failed, it might not be available in this environment\n'
     exit 1
 fi
 
@@ -22,7 +22,7 @@ stage=false
 
 # parse opts
 help_msg="\
-Usage: release [OPTIONS]
+Usage: $0 [OPTIONS]
 
 OPTIONS:
   -d, --dry-run                execute as dry run, meaning all output will be
@@ -38,63 +38,68 @@ OPTIONS:
                                merge to main & push for release
 "
 longopts=dry-run,release-as:,prerelease::,help,stage-only
-options=dr:ph?s
+options=dr:phs
 release_args=()
-parsed=$(getopt --options=$options --longoptions=$longopts --name "$0" -- "$@")
-eval set -- "$parsed"
-while true; do
-    case "$1" in
-        -d|--dry-run)
-            dry=true
-            shift
-            ;;
-        -f|--first-release)
-            release_args+=("$1")
-            shift
-            ;;
-        -h|--help|\?)
-            printf "$help_msg"
-            exit 0
-            ;;
-        --prerelease)
-            release_args+=("$1")
-            if [ ${#@} -gt 1 ]; then
+
+if parsed="$(getopt --options=$options --longoptions=$longopts --name "$0" -- "$@")"; then
+    eval set -- "$parsed"
+    while true; do
+        case "$1" in
+            -d|--dry-run)
+                dry=true
+                shift
+                ;;
+            -f|--first-release)
+                release_args+=("$1")
+                shift
+                ;;
+            -h|--help)
+                printf "$help_msg\n"
+                exit 0
+                ;;
+            --prerelease)
+                release_args+=("$1")
+                if [ ${#@} -gt 1 ]; then
+                    release_args+=("$2")
+                    shift 2
+                else
+                    shift
+                fi
+                ;;
+            -p)
+                release_args+=("--prerelease")
+                shift
+                ;;
+            -r|--release-as)
+                release_args+=("$1")
                 release_args+=("$2")
                 shift 2
-            else
+                ;;
+            -s|--stage-only)
+                stage=true
                 shift
-            fi
-            ;;
-        -p)
-            release_args+=("--prerelease")
-            shift
-            ;;
-        -r|--release-as)
-            release_args+=("$1")
-            release_args+=("$2")
-            shift 2
-            ;;
-        -s|--stage-only)
-            stage=true
-            shift
-            ;;
-        --)
-            shift
-            break
-            ;;
-        *)
-            printf "Options error"
-            printf "$help_msg"
-            exit 3
-            ;;
-    esac
-done
+                ;;
+            --)
+                shift
+                break
+                ;;
+            *)
+                printf "Options error\n"
+                printf "$help_msg\n"
+                exit 3
+                ;;
+        esac
+    done
+else # handle invalid options
+    printf "$help_msg\n"
+    exit $?
+fi
 
 printf "\
 releasing with options as:
   --dry-run: $dry
   --stage-only: $stage
-  -- ${release_args[@]}"
+  -- ${release_args[@]}\n"
 
 # init tag as empty until a release is created
 tag=""
@@ -106,7 +111,7 @@ branch="chore/release-staging"
 #
 # quit with a failure exit code
 exit_failure () {
-    printf "quitting release"
+    printf "quitting release\n"
     exit 1
 }
 
@@ -135,11 +140,11 @@ failure_cleanup () {
 #
 # helper fn to attempt graceful exit on program failure
 exit_cleanup () {
-    printf "attempting to quit gracefully..."
+    printf "attempting to quit gracefully...\n"
     if ! failure_cleanup; then
-        printf "graceful quit failed, bailing"
+        printf "graceful quit failed, bailing\n"
     else
-        printf "graceful shutdown complete"
+        printf "graceful shutdown complete\n"
     fi
     exit_failure
 }
@@ -155,7 +160,7 @@ exit_cleanup () {
 try () {
     local catch=${2:-"exit_cleanup"} # use 2nd arg on error, or default to exit helper
     if ! $1; then
-        printf "'$1' failed"
+        printf "'$1' failed\n"
         $catch
     fi
 }
@@ -166,10 +171,12 @@ try () {
 # try to create a release & prepare the release changelog
 create () {
     git checkout -b $branch
-    cmd="npm run release"
+    cmd="npx commit-and-tag-version"
     if [ ${#release_args[@]} -gt 0 ]; then
-        cmd+=" -- ${release_args[@]}"
+        cmd+=" ${release_args[@]}"
     fi
+    printf "cutting release with:\n"
+    printf "$cmd\n"
     try "$cmd"
     # update global tag value from newly updated package.json
     tag="v$(node -p "require('./package.json').version")"
@@ -195,7 +202,7 @@ if [ -s BODY.md ]; then
 
     if [ "$dry" == "true" ]; then
         failure_cleanup
-        printf "dry run complete, rerun '$original_cmd' without --dry-run to execute"
+        printf "dry run complete, rerun '$original_cmd' without --dry-run to execute\n"
         exit 0
     elif [ "$stage" == "true" ]; then
         printf "\
@@ -204,16 +211,16 @@ Release $tag staged on $branch. To complete release, inspect staged release as n
     git merge $branch
     git push origin
     git branch -d $branch
-    rm BODY.md"
+    rm BODY.md\n"
         exit 0
     else
-        printf "pushing tag for release"
+        printf "pushing tag for release\n"
         # FIXME: change back to push and remove failure_cleanup
         # push
         failure_cleanup
     fi
 else
-    printf "no user facing changes found, deleting tag"
+    printf "no user facing changes found, deleting tag\n"
     failure_cleanup
 fi
 
