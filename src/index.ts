@@ -97,14 +97,14 @@ async function livePreview(path: string): Promise<void> {
     logger.debug("Cleaning up...")
     if (appDir) await appDir.destroy()
     if (watcher && !watcher.closed) await watcher.close()
-    if (server && !server.killed) server.kill("SIGTERM")
+    if (server && !server.killed) server.kill("SIGINT")
     logger.debug("...cleanup complete")
   }
 
   function cleanupSync(): void {
     logger.debug("Cleaning up...")
     if (appDir) appDir.destroySync()
-    if (server && !server.killed) server.kill("SIGTERM")
+    if (server && !server.killed) server.kill("SIGINT")
     logger.debug("...cleanup complete")
   }
 
@@ -117,13 +117,17 @@ async function livePreview(path: string): Promise<void> {
           }),
         )
       })
-      child.once("exit", (code) => {
+      child.once("exit", (code, signal) => {
         logger.info("server exiting...")
         cleanup()
-        if (code === 0) {
+        if (code === 0 || signal === "SIGINT") {
           resolve()
         } else {
-          reject(new Error(`Unhandled exit code in server: ${code}`))
+          reject(
+            new Error(
+              `Unhandled exit code (${code}) or signal (${signal}) in server. `,
+            ),
+          )
         }
       })
     })
