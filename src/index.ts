@@ -83,10 +83,10 @@ export async function main(argv: string[]): Promise<void> {
     return
   }
 
-  return livePreview(path)
+  return livePreview(path, args._.slice(1))
 }
 
-async function livePreview(path: string): Promise<void> {
+async function livePreview(path: string, args: string[]): Promise<void> {
   logger.debug("Starting live preview...")
 
   let appDir: TmpDir | undefined = undefined
@@ -185,7 +185,9 @@ async function livePreview(path: string): Promise<void> {
     logger.info(`Watching ${path} for changes`)
 
     // start vite dev server in temp dir
-    server = spawn("npm", ["run", "dev"], {
+    let command_args = ["run", "dev"]
+    if (args.length > 0) command_args = [...command_args, "--", ...args]
+    server = spawn("npm", command_args, {
       cwd: appDir.path,
       stdio: [process.stdin, process.stdout, process.stderr],
     })
