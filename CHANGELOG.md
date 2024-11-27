@@ -2,6 +2,13 @@
 
 All notable changes to this project will be documented in this file. See [commit-and-tag-version](https://github.com/absolute-version/commit-and-tag-version) for commit guidelines.
 
+## [0.1.1](https://github.com/andrew-chang-dewitt/mdpub/compare/v0.1.0...v0.1.1) (2024-11-27)
+
+
+### Features
+
+* allow passthrough of args after `--` to vite dev server ([5fb215b](https://github.com/andrew-chang-dewitt/mdpub/commit/5fb215bd5a9fd57fb3a62922a6c7fe1979967291))
+
 ## [0.1.0](https://github.com/andrew-chang-dewitt/mdpub/compare/v0.0.2...v0.1.0) (2024-11-27)
 
 
