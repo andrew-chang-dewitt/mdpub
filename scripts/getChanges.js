@@ -16,7 +16,6 @@ async function main() {
 
   while (keepGoing) {
     const line = lines[idx]
-    console.dir(line)
 
     if (line.startsWith("## [") && !take) {
       take = true
