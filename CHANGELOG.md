@@ -2,6 +2,13 @@
 
 All notable changes to this project will be documented in this file. See [commit-and-tag-version](https://github.com/absolute-version/commit-and-tag-version) for commit guidelines.
 
+## [0.1.3](https://github.com/andrew-chang-dewitt/mdpub/compare/v0.1.2...v0.1.3) (2024-11-29)
+
+
+### Features
+
+* update create-vite-ssg tool for markdown-directive support ([bf51edf](https://github.com/andrew-chang-dewitt/mdpub/commit/bf51edf378b7f2b875e969cb403745e3805bfe5f))
+
 ## [0.1.2](https://github.com/andrew-chang-dewitt/mdpub/compare/v0.1.1...v0.1.2) (2024-11-29)
 
 
