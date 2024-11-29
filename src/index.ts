@@ -87,7 +87,7 @@ export async function main(argv: string[]): Promise<void> {
 }
 
 async function livePreview(path: string, args: string[]): Promise<void> {
-  logger.debug("Starting live preview...")
+  logger.info("Starting live preview...")
 
   let appDir: TmpDir | undefined = undefined
   let watcher: FSWatcher | undefined = undefined
@@ -117,9 +117,9 @@ async function livePreview(path: string, args: string[]): Promise<void> {
           }),
         )
       })
-      child.once("exit", (code, signal) => {
-        logger.info("server exiting...")
-        cleanup()
+      child.once("exit", async (code, signal) => {
+        logger.debug("server exiting...")
+        await cleanup()
         if (code === 0 || signal === "SIGINT") {
           resolve()
         } else {
@@ -136,11 +136,10 @@ async function livePreview(path: string, args: string[]): Promise<void> {
   // ensure everything's cleaned up parent exit
   process.on("beforeExit", (_) => {
     logger.info("Shutting down...")
-    cleanupSync()
   })
   // same for CTRL+C
   process.on("SIGINT", (_) => {
-    logger.info("CTRL+C caught, shutting down...")
+    logger.info("CTRL+C caught")
     cleanupSync()
   })
 
@@ -161,6 +160,7 @@ async function livePreview(path: string, args: string[]): Promise<void> {
     }
 
     // install deps in appDir
+    logger.info("Setting up preview server...")
     logger.debug("setup preview server environment")
     const install = spawnSync("npm", ["i"], { cwd: appDir.path })
     logger.debug("install results")
@@ -175,12 +175,19 @@ async function livePreview(path: string, args: string[]): Promise<void> {
     logger.debug(`setting up preview server w/ content from ${srcPath}`)
     await cp(srcPath, join(srcPagesPath), { recursive: true })
     logger.debug(`${path} copied into temporary app`)
+    logger.info("Done.")
 
     // make chokidar watcher that copies file at `path` to
     watcher = watch(srcPath)
     watcher.on("change", async (f) => {
-      await cp(join(srcPath, f), join(srcPagesPath, f))
-      logger.debug(`${f} updated in preview server`)
+      logger.debug(`${f} changed, updating...`)
+      const source = resolve(srcPath, f)
+      // get relative path from appDir root
+      const relative = f.slice(srcPath.length + 1)
+      const target = resolve(srcPagesPath, relative)
+      logger.debug(`copying ${source} to ${target}`)
+      await cp(source, target)
+      logger.debug("update done")
     })
     logger.info(`Watching ${path} for changes`)
 
