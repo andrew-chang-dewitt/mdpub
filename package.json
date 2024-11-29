@@ -54,7 +54,7 @@
   },
   "dependencies": {
     "chokidar": "^4.0.1",
-    "create-vite-ssg": "^0.0.1",
+    "create-vite-ssg": "^0.0.2",
     "loglevel": "^1.9.2",
     "minimist": "^1.2.8"
   },
